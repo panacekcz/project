@@ -175,9 +175,19 @@ bool Unboxing::genericDot() {
     if(lhs->isDouble() and rhs->isDouble()) {
         // If both arguments are known to be vectors of double,
         // we can unbox them. The result is then double scalar.
-        llvm::Value * l = getVectorPayload(lhs);
-        llvm::Value * r = getVectorPayload(rhs);
-        AType* result_t = updateAnalysis(RUNTIME_CALL(m->doubleDot, l, r), new AType(AType::Kind::D));
+        llvm::Value *l, *r, *result;
+        if(lhs->isScalar() and rhs->isScalar()) {
+            // If both arguments are scalar, use multiplication directly
+            l = getScalarPayload(lhs);
+            r = getScalarPayload(rhs);
+            result = BinaryOperator::Create(Instruction::FMul, l, r, "", ins);
+        } else {
+            // Otherwise use doubleDot function call
+            l = getVectorPayload(lhs);
+            r = getVectorPayload(rhs);
+            result = RUNTIME_CALL(m->doubleDot, l, r);
+        }
+        AType *result_t = updateAnalysis(result, new AType(AType::Kind::D));
         ins->replaceAllUsesWith(box(result_t));
         return true;
     } else {
