@@ -14,7 +14,10 @@ char TypeAnalysis::ID = 0;
 
 AType * AType::top = createTop();
 
-
+void TypeAnalysis::genericDot(CallInst * ci) {
+    // The result of the %*% operator is (if it succeeds) always a single scalar
+    state.update(ci, new AType(AType::Kind::R, AType::Kind::DV, AType::Kind::D));
+}
 
 void TypeAnalysis::genericArithmetic(CallInst * ci) {
     AType * lhs = state.get(ci->getOperand(0));
@@ -100,6 +103,8 @@ bool TypeAnalysis::runOnFunction(llvm::Function & f) {
                         genericArithmetic(ci);
                     } else if (s == "genericDiv") {
                         genericArithmetic(ci);
+                    } else if (s == "genericDot") {
+                        genericDot(ci);
                     } else if (s == "genericEq") {
                         genericRelational(ci);
                     } else if (s == "genericNeq") {
