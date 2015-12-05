@@ -169,6 +169,22 @@ bool Unboxing::genericArithmetic(llvm::Instruction::BinaryOps op, llvm::Function
     }
 }
 
+bool Unboxing::genericDot() {
+    AType * lhs = state().get(ins->getOperand(0));
+    AType * rhs = state().get(ins->getOperand(1));
+    if(lhs->isDouble() and rhs->isDouble()) {
+        // If both arguments are known to be vectors of double,
+        // we can unbox them. The result is then double scalar.
+        llvm::Value * l = getVectorPayload(lhs);
+        llvm::Value * r = getVectorPayload(rhs);
+        AType* result_t = updateAnalysis(RUNTIME_CALL(m->doubleDot, l, r), new AType(AType::Kind::D));
+        ins->replaceAllUsesWith(box(result_t));
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void Unboxing::doubleRelational(AType * lhs, AType * rhs, llvm::CmpInst::Predicate op, llvm::Function * fop) {
     assert(lhs->isDouble() and rhs->isDouble() and "Doubles expected");
     AType * result_t;
@@ -337,6 +353,8 @@ bool Unboxing::runOnFunction(llvm::Function & f) {
                     erase = genericArithmetic(Instruction::FMul, m->doubleMul);
                 } else if (s == "genericDiv") {
                     erase = genericArithmetic(Instruction::FDiv, m->doubleDiv);
+                } else if (s == "genericDot") {
+                    erase = genericDot();
                 } else if (s == "genericLt") {
                     erase = genericRelational(FCmpInst::FCMP_OLT, m->doubleLt);
                 } else if (s == "genericGt") {
